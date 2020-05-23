@@ -2,8 +2,14 @@ use nalgebra::Vector3;
 
 #[derive(Debug)]
 pub struct BoundingBox {
-    min: Vector3<f32>,
-    max: Vector3<f32>,
+    pub min: Vector3<f32>,
+    pub max: Vector3<f32>,
+}
+
+impl BoundingBox {
+    pub fn new(min: Vector3<f32>, max: Vector3<f32>) -> Self {
+        BoundingBox { min, max }
+    }
 }
 
 #[derive(Debug)]
@@ -20,10 +26,10 @@ impl Triangle {
 }
 
 impl Triangle {
-    fn is_inside(&self, point: &Vector3<f32>) -> bool {
-        let box_min = Vector3::new(point.x.floor(), point.y.floor(), point.z.floor());
+    pub fn is_inside(&self, vector: &Vector3<u32>) -> bool {
+        let vector_float = Vector3::new(vector.x as f32, vector.y as f32, vector.z as f32);
         let box_half_size = Vector3::new(0.5, 0.5, 0.5);
-        let box_center = box_min + &box_half_size;
+        let box_center = vector_float + &box_half_size;
 
         // Move the triangle so that the box is centered around the origin.
         let v0 = self.a - &box_center;
@@ -130,6 +136,37 @@ impl Triangle {
 
         true
     }
+
+    pub fn scale(self, scale: f32) -> Triangle {
+        let a = self.a.scale(scale);
+        let b = self.b.scale(scale);
+        let c = self.c.scale(scale);
+
+        Triangle::new(a, b, c)
+    }
+
+    pub fn move_to(self, vector: &Vector3<f32>) -> Triangle {
+        let a = self.a + vector;
+        let b = self.b + vector;
+        let c = self.c + vector;
+
+        Triangle::new(a, b, c)
+    }
+
+    pub fn bounding_box(&self) -> BoundingBox {
+        let min_x = self.a.x.min(self.b.x).min(self.c.x);
+        let min_y = self.a.y.min(self.b.y).min(self.c.y);
+        let min_z = self.a.z.min(self.b.z).min(self.c.z);
+
+        let max_x = self.a.x.max(self.b.x).max(self.c.x);
+        let max_y = self.a.y.max(self.b.y).max(self.c.y);
+        let max_z = self.a.z.max(self.b.z).max(self.c.z);
+
+        let min = Vector3::new(min_x, min_y, min_z);
+        let max = Vector3::new(max_x, max_y, max_z);
+
+        BoundingBox::new(min, max)
+    }
 }
 
 fn min_max_overlaps(box_half_size: f32, v0: f32, v1: f32, v2: f32) -> bool {
@@ -139,7 +176,12 @@ fn min_max_overlaps(box_half_size: f32, v0: f32, v1: f32, v2: f32) -> bool {
     min > box_half_size || max < -box_half_size
 }
 
-fn axis_test_zy(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Vector3<f32>, edge: &Vector3<f32>) -> bool {
+fn axis_test_zy(
+    point1: &Vector3<f32>,
+    point2: &Vector3<f32>,
+    box_half_size: &Vector3<f32>,
+    edge: &Vector3<f32>,
+) -> bool {
     axis_test(
         edge.z,
         edge.y,
@@ -153,7 +195,12 @@ fn axis_test_zy(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Ve
     )
 }
 
-fn axis_test_mzx(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Vector3<f32>, edge: &Vector3<f32>) -> bool {
+fn axis_test_mzx(
+    point1: &Vector3<f32>,
+    point2: &Vector3<f32>,
+    box_half_size: &Vector3<f32>,
+    edge: &Vector3<f32>,
+) -> bool {
     axis_test(
         -edge.z,
         edge.x,
@@ -167,7 +214,12 @@ fn axis_test_mzx(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &V
     )
 }
 
-fn axis_test_yx(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Vector3<f32>, edge: &Vector3<f32>) -> bool {
+fn axis_test_yx(
+    point1: &Vector3<f32>,
+    point2: &Vector3<f32>,
+    box_half_size: &Vector3<f32>,
+    edge: &Vector3<f32>,
+) -> bool {
     axis_test(
         edge.y,
         edge.x,
@@ -235,5 +287,57 @@ mod tests {
 
         assert!(!triangle.is_inside(&Vector3::new(-3.0, 6.0, -2.0)));
         assert!(!triangle.is_inside(&Vector3::new(10.0, 5.0, 0.0)));
+    }
+
+    #[test]
+    fn test_scale() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 5.0);
+        let c = Vector3::new(-5.0, 5.0, -5.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let scaled_triangle = triangle.scale(2.0);
+
+        let scaled_a = Vector3::new(0.0, 0.0, 0.0);
+        let scaled_b = Vector3::new(10.0, 10.0, 10.0);
+        let scaled_c = Vector3::new(-10.0, 10.0, -10.0);
+
+        assert_eq!(scaled_triangle.a, scaled_a);
+        assert_eq!(scaled_triangle.b, scaled_b);
+        assert_eq!(scaled_triangle.c, scaled_c);
+    }
+
+    #[test]
+    fn test_move_to() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 5.0);
+        let c = Vector3::new(-5.0, 5.0, -5.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let moved_triangle = triangle.move_to(&Vector3::new(50.0, -50.0, 100.0));
+
+        let moved_a = Vector3::new(50.0, -50.0, 100.0);
+        let moved_b = Vector3::new(55.0, -45.0, 105.0);
+        let moved_c = Vector3::new(45.0, -45.0, 95.0);
+
+        assert_eq!(moved_triangle.a, moved_a);
+        assert_eq!(moved_triangle.b, moved_b);
+        assert_eq!(moved_triangle.c, moved_c);
+    }
+
+    #[test]
+    fn test_bounding_box() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 5.0);
+        let c = Vector3::new(-5.0, 5.0, -5.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let bounding_box = triangle.bounding_box();
+
+        let min = Vector3::new(-5.0, 0.0, -5.0);
+        let max = Vector3::new(5.0, 5.0, 5.0);
+
+        assert_eq!(bounding_box.min, min);
+        assert_eq!(bounding_box.max, max);
     }
 }

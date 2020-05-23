@@ -5,4 +5,7 @@ authors = ["vagola <vladislavs.golubs@yandex.ru>"]
 edition = "2018"
 
 [dependencies]
+flying-pathfinding = { git = "https://github.com/negaisa/flying-pathfinding" }
+structopt = "0.3"
 nalgebra = "0.21.0"
+obj = "0.10.0"
