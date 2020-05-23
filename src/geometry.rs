@@ -1,145 +1,89 @@
-use std::panic;
+use nalgebra::Vector3;
 
 #[derive(Debug)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-}
-
-impl Point {
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Point { x, y, z }
-    }
-
-    pub fn splat(value: f32) -> Self {
-        Point::new(value, value, value)
-    }
-
-    pub fn multiply(&self, other: &Point) -> Point {
-        let x = self.x * other.x;
-        let y = self.y * other.y;
-        let z = self.z * other.z;
-
-        Point::new(x, y, z)
-    }
-
-    pub fn cross(&self, other: &Point) -> Point {
-        let x = self.y * other.z - self.z * other.y;
-        let y = self.z * other.x - self.x * other.z;
-        let z = self.x * other.y - self.y * other.x;
-
-        Point::new(x, y, z)
-    }
-
-    pub fn add(&self, other: &Point) -> Point {
-        let x = self.x + other.x;
-        let y = self.y + other.y;
-        let z = self.z + other.z;
-
-        Point::new(x, y, z)
-    }
-
-    pub fn subtract(&self, other: &Point) -> Point {
-        let x = self.x - other.x;
-        let y = self.y - other.y;
-        let z = self.z - other.z;
-
-        Point::new(x, y, z)
-    }
-
-    pub fn scalar(&self, other: &Point) -> f32 {
-        self.x * other.x + self.y * other.y + self.z * other.z
-    }
-
-    pub fn get_point(&self, index: usize) -> f32 {
-        match index {
-            0 => self.x,
-            1 => self.y,
-            2 => self.z,
-            _ => panic!("Index of bounds"),
-        }
-    }
-
-    pub fn set_point(&self, index: usize, value: f32) -> Point {
-        match index {
-            0 => Point::new(self.x + value, self.y, self.z),
-            1 => Point::new(self.x, self.y + value, self.z),
-            2 => Point::new(self.x, self.y, self.z + value),
-            _ => panic!("Index of bounds"),
-        }
-    }
-}
-
-pub trait Geometry {
-    fn is_inside(&self, point: &Point) -> bool;
-
-    fn recalculate(&self, center: &Point, scale: f32) -> Self;
+pub struct BoundingBox {
+    min: Vector3<f32>,
+    max: Vector3<f32>,
 }
 
 #[derive(Debug)]
 pub struct Triangle {
-    pub a: Point,
-    pub b: Point,
-    pub c: Point,
+    pub a: Vector3<f32>,
+    pub b: Vector3<f32>,
+    pub c: Vector3<f32>,
 }
 
 impl Triangle {
-    pub fn new(a: Point, b: Point, c: Point) -> Self {
+    pub fn new(a: Vector3<f32>, b: Vector3<f32>, c: Vector3<f32>) -> Self {
         Triangle { a, b, c }
     }
 }
 
-impl Geometry for Triangle {
-    fn is_inside(&self, point: &Point) -> bool {
-        let box_min = Point::new(point.x.floor(), point.y.floor(), point.z.floor());
-        let box_half_size = Point::splat(0.5);
-        let box_center = box_min.add(&box_half_size);
+impl Triangle {
+    fn is_inside(&self, point: &Vector3<f32>) -> bool {
+        let box_min = Vector3::new(point.x.floor(), point.y.floor(), point.z.floor());
+        let box_half_size = Vector3::new(0.5, 0.5, 0.5);
+        let box_center = box_min + &box_half_size;
 
         // Move the triangle so that the box is centered around the origin.
-        let v0 = self.a.subtract(&box_center);
-        let v1 = self.b.subtract(&box_center);
-        let v2 = self.c.subtract(&box_center);
+        let v0 = self.a - &box_center;
+        let v1 = self.b - &box_center;
+        let v2 = self.c - &box_center;
 
         // The edges of the triangle.
-        let e0 = v1.subtract(&v0);
-        let e1 = v2.subtract(&v1);
-        let e2 = v0.subtract(&v2);
+        let e0 = v1 - &v0;
+        let e1 = v2 - &v1;
+        let e2 = v0 - &v2;
 
         // 1. Test the AABB against the minimal AABB around the triangle.
-        for i in 0..3 {
-            if min_max_overlaps(
-                box_half_size.get_point(i),
-                v0.get_point(i),
-                v1.get_point(i),
-                v2.get_point(i),
-            ) {
-                return false;
-            }
+        if min_max_overlaps(box_half_size.x, v0.x, v1.x, v2.x) {
+            return false;
+        }
+
+        if min_max_overlaps(box_half_size.y, v0.y, v1.y, v2.y) {
+            return false;
+        }
+
+        if min_max_overlaps(box_half_size.z, v0.z, v1.z, v2.z) {
+            return false;
         }
 
         // 2. Test if the box intersects the plane of the triangle.
         let normal = e0.cross(&e1);
-        let d = -normal.scalar(&v0);
+        let d = -normal.dot(&v0);
 
-        let mut v_min = Point::splat(0.0);
-        let mut v_max = Point::splat(0.0);
+        let mut v_min = Vector3::new(0.0, 0.0, 0.0);
+        let mut v_max = Vector3::new(0.0, 0.0, 0.0);
 
-        for i in 0..3 {
-            if normal.get_point(i) > 0.0 {
-                v_min = v_min.set_point(i, -box_half_size.get_point(i));
-                v_max = v_max.set_point(i, box_half_size.get_point(i));
-            } else {
-                v_min = v_min.set_point(i, box_half_size.get_point(i));
-                v_max = v_max.set_point(i, -box_half_size.get_point(i));
-            }
+        if normal.x > 0.0 {
+            v_min.x -= box_half_size.x;
+            v_max.x += box_half_size.x;
+        } else {
+            v_min.x += box_half_size.x;
+            v_max.x -= box_half_size.x;
         }
 
-        if normal.scalar(&v_min) + d > 0.0 {
+        if normal.y > 0.0 {
+            v_min.y -= box_half_size.y;
+            v_max.y += box_half_size.y;
+        } else {
+            v_min.y += box_half_size.y;
+            v_max.y -= box_half_size.y;
+        }
+
+        if normal.z > 0.0 {
+            v_min.z -= box_half_size.z;
+            v_max.z += box_half_size.z;
+        } else {
+            v_min.z += box_half_size.z;
+            v_max.z -= box_half_size.z;
+        }
+
+        if normal.dot(&v_min) + d > 0.0 {
             return false;
         }
 
-        if normal.scalar(&v_max) < 0.0 {
+        if normal.dot(&v_max) < 0.0 {
             return false;
         }
 
@@ -186,16 +130,6 @@ impl Geometry for Triangle {
 
         true
     }
-
-    fn recalculate(&self, center: &Point, scale: f32) -> Self {
-        let scale_point = Point::new(scale, scale, scale);
-
-        let a = self.a.multiply(&scale_point).add(&center);
-        let b = self.b.multiply(&scale_point).add(&center);
-        let c = self.c.multiply(&scale_point).add(&center);
-
-        Triangle::new(a, b, c)
-    }
 }
 
 fn min_max_overlaps(box_half_size: f32, v0: f32, v1: f32, v2: f32) -> bool {
@@ -205,7 +139,7 @@ fn min_max_overlaps(box_half_size: f32, v0: f32, v1: f32, v2: f32) -> bool {
     min > box_half_size || max < -box_half_size
 }
 
-fn axis_test_zy(point1: &Point, point2: &Point, box_half_size: &Point, edge: &Point) -> bool {
+fn axis_test_zy(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Vector3<f32>, edge: &Vector3<f32>) -> bool {
     axis_test(
         edge.z,
         edge.y,
@@ -219,7 +153,7 @@ fn axis_test_zy(point1: &Point, point2: &Point, box_half_size: &Point, edge: &Po
     )
 }
 
-fn axis_test_mzx(point1: &Point, point2: &Point, box_half_size: &Point, edge: &Point) -> bool {
+fn axis_test_mzx(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Vector3<f32>, edge: &Vector3<f32>) -> bool {
     axis_test(
         -edge.z,
         edge.x,
@@ -233,7 +167,7 @@ fn axis_test_mzx(point1: &Point, point2: &Point, box_half_size: &Point, edge: &P
     )
 }
 
-fn axis_test_yx(point1: &Point, point2: &Point, box_half_size: &Point, edge: &Point) -> bool {
+fn axis_test_yx(point1: &Vector3<f32>, point2: &Vector3<f32>, box_half_size: &Vector3<f32>, edge: &Vector3<f32>) -> bool {
     axis_test(
         edge.y,
         edge.x,
@@ -284,21 +218,22 @@ fn axis_test(
 
 #[cfg(test)]
 mod tests {
-    use crate::geometry::{Geometry, Point, Triangle};
+    use crate::geometry::Triangle;
+    use nalgebra::Vector3;
 
     #[test]
     fn test_is_inside() {
-        let a = Point::new(0.0, 0.0, 0.0);
-        let b = Point::new(5.0, 5.0, 5.0);
-        let c = Point::new(-5.0, 5.0, -5.0);
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 5.0);
+        let c = Vector3::new(-5.0, 5.0, -5.0);
 
         let triangle = Triangle::new(a, b, c);
 
-        assert!(triangle.is_inside(&Point::new(0.0, 0.0, 0.0)));
-        assert!(triangle.is_inside(&Point::new(5.0, 5.0, 5.0)));
-        assert!(triangle.is_inside(&Point::new(-5.0, 5.0, -5.0)));
+        assert!(triangle.is_inside(&Vector3::new(0.0, 0.0, 0.0)));
+        assert!(triangle.is_inside(&Vector3::new(5.0, 5.0, 5.0)));
+        assert!(triangle.is_inside(&Vector3::new(-5.0, 5.0, -5.0)));
 
-        assert!(!triangle.is_inside(&Point::new(-3.0, 6.0, -2.0)));
-        assert!(!triangle.is_inside(&Point::new(10.0, 5.0, 0.0)));
+        assert!(!triangle.is_inside(&Vector3::new(-3.0, 6.0, -2.0)));
+        assert!(!triangle.is_inside(&Vector3::new(10.0, 5.0, 0.0)));
     }
 }
