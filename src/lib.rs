@@ -4,7 +4,7 @@ use nalgebra::Vector3;
 use obj::Obj;
 use std::path::PathBuf;
 
-mod geometry;
+pub mod geometry;
 
 pub trait Progress {
     fn starting(&self);
@@ -55,7 +55,7 @@ pub fn convert<P: Progress>(
     progress.finished();
 }
 
-fn parse_triangles(obj: Obj) -> Vec<Triangle> {
+pub fn parse_triangles(obj: Obj) -> Vec<Triangle> {
     let data = obj.data;
     let positions = &data.position;
 
