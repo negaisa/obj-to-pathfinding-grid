@@ -42,21 +42,59 @@ fn main() {
         None => {
             let input_name_without_extension = input.file_stem().unwrap().to_str().unwrap();
             let output_name = format!("{}.{}", input_name_without_extension, "dat");
+
             PathBuf::from(output_name)
         }
     };
 
-    convert(input, &output, center, scale, width, height);
+    let std_out_progress = StdOutProgress {};
+
+    convert(
+        input,
+        &output,
+        center,
+        scale,
+        width,
+        height,
+        std_out_progress,
+    );
 }
 
-fn convert(
+trait Progress {
+    fn starting(&self);
+
+    fn update_progress(&self, percent: f32);
+
+    fn finished(&self);
+}
+
+struct StdOutProgress {}
+
+impl Progress for StdOutProgress {
+    fn starting(&self) {
+        println!("Starting!")
+    }
+
+    fn update_progress(&self, percent: f32) {
+        print!("Current progress: {:.2}%\r", percent)
+    }
+
+    fn finished(&self) {
+        println!("\nFinished!")
+    }
+}
+
+fn convert<P: Progress>(
     input: &PathBuf,
     output: &PathBuf,
     center: Vector3<f32>,
     scale: f32,
     width: u32,
     height: u32,
+    progress: P,
 ) {
+    progress.starting();
+
     let obj = Obj::load(input).expect("Failed to load input file");
 
     let triangles: Vec<Triangle> = parse_triangles(obj)
@@ -65,10 +103,16 @@ fn convert(
         .map(|t| t.move_to(&center))
         .collect();
 
-    let mut obstacles: Vec<Vector3<u32>> = Vec::new();
+    let mut obstacles = Vec::new();
+    let length = triangles.len();
+    let mut current = 0;
 
     for triangle in triangles {
-        obstacles.extend(find_obstacles(&triangle));
+        obstacles.extend(find_obstacles(&triangle, width, height));
+        current += 1;
+
+        let percent = current as f32 * 100.0 / length as f32;
+        progress.update_progress(percent);
     }
 
     let mut grid = Grid::new(width, height);
@@ -78,6 +122,7 @@ fn convert(
     }
 
     grid.export(output).expect("Failed to save output file");
+    progress.finished();
 }
 
 fn parse_triangles(obj: Obj) -> Vec<Triangle> {
@@ -104,26 +149,26 @@ fn parse_triangles(obj: Obj) -> Vec<Triangle> {
         .collect()
 }
 
-fn find_obstacles(triangle: &Triangle) -> Vec<Vector3<u32>> {
+fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u32>> {
     let bounding_box = triangle.bounding_box();
     let min = bounding_box.min;
     let max = bounding_box.max;
 
-    let min_x = min.x.floor() as usize;
-    let max_x = max.x.ceil() as usize;
+    let min_x = min.x.floor() as u32;
+    let max_x = max.x.ceil() as u32;
 
-    let min_y = min.y.floor() as usize;
-    let max_y = max.y.ceil() as usize;
+    let min_y = min.y.floor() as u32;
+    let max_y = max.y.ceil() as u32;
 
-    let min_z = min.z.floor() as usize;
-    let max_z = max.z.ceil() as usize;
+    let min_z = min.z.floor() as u32;
+    let max_z = max.z.ceil() as u32;
 
     let mut obstacles = Vec::new();
 
-    for x in min_x..max_x {
-        for y in min_y..max_y {
-            for z in min_z..max_z {
-                let point = Vector3::new(x as u32, y as u32, z as u32);
+    for x in min_x..max_x.min(width) {
+        for y in min_y..max_y.min(width) {
+            for z in min_z..max_z.min(height) {
+                let point = Vector3::new(x, y, z);
 
                 if triangle.is_inside(&point) {
                     obstacles.push(point);
