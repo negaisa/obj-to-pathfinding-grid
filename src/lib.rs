@@ -2,31 +2,21 @@ use crate::geometry::Triangle;
 use flying_pathfinding::Grid;
 use nalgebra::Vector3;
 use obj::Obj;
-use std::path::PathBuf;
 
 pub mod geometry;
 
 pub trait Progress {
-    fn starting(&self);
-
     fn update_progress(&self, percent: f32);
-
-    fn finished(&self);
 }
 
 pub fn convert<P: Progress>(
-    input: &PathBuf,
-    output: &PathBuf,
+    obj: &Obj,
     center: Vector3<f32>,
     scale: f32,
     width: u32,
     height: u32,
     progress: P,
-) {
-    progress.starting();
-
-    let obj = Obj::load(input).expect("Failed to load input file");
-
+) -> Grid {
     let triangles: Vec<Triangle> = parse_triangles(obj)
         .into_iter()
         .map(|t| t.scale(scale))
@@ -51,12 +41,11 @@ pub fn convert<P: Progress>(
         grid.set_obstacle(obstacle.x, obstacle.y, obstacle.z);
     }
 
-    grid.export(output).expect("Failed to save output file");
-    progress.finished();
+    grid
 }
 
-pub fn parse_triangles(obj: Obj) -> Vec<Triangle> {
-    let data = obj.data;
+fn parse_triangles(obj: &Obj) -> Vec<Triangle> {
+    let data = &obj.data;
     let positions = &data.position;
 
     data.objects
@@ -81,23 +70,24 @@ pub fn parse_triangles(obj: Obj) -> Vec<Triangle> {
 
 fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u32>> {
     let bounding_box = triangle.bounding_box();
+
     let min = bounding_box.min;
     let max = bounding_box.max;
 
-    let min_x = min.x.floor() as u32;
-    let max_x = max.x.ceil() as u32;
+    let min_x = (min.x.floor() as u32).min(width);
+    let max_x = (max.x.ceil() as u32).max(width);
 
-    let min_y = min.y.floor() as u32;
-    let max_y = max.y.ceil() as u32;
+    let min_y = (min.y.floor() as u32).min(width);
+    let max_y = (max.y.ceil() as u32).max(width);
 
-    let min_z = min.z.floor() as u32;
-    let max_z = max.z.ceil() as u32;
+    let min_z = (min.z.floor() as u32).min(height);
+    let max_z = (max.z.ceil() as u32).max(height);
 
     let mut obstacles = Vec::new();
 
-    for x in min_x..max_x.min(width) {
-        for y in min_y..max_y.min(width) {
-            for z in min_z..max_z.min(height) {
+    for x in min_x..max_x {
+        for y in min_y..max_y {
+            for z in min_z..max_z {
                 let point = Vector3::new(x, y, z);
 
                 if triangle.is_inside(&point) {

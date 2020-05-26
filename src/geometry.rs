@@ -281,12 +281,9 @@ mod tests {
 
         let triangle = Triangle::new(a, b, c);
 
-        assert!(triangle.is_inside(&Vector3::new(0.0, 0.0, 0.0)));
-        assert!(triangle.is_inside(&Vector3::new(5.0, 5.0, 5.0)));
-        assert!(triangle.is_inside(&Vector3::new(-5.0, 5.0, -5.0)));
-
-        assert!(!triangle.is_inside(&Vector3::new(-3.0, 6.0, -2.0)));
-        assert!(!triangle.is_inside(&Vector3::new(10.0, 5.0, 0.0)));
+        assert!(triangle.is_inside(&Vector3::new(0, 0, 0)));
+        assert!(triangle.is_inside(&Vector3::new(5, 5, 5)));
+        assert!(!triangle.is_inside(&Vector3::new(10, 5, 0)));
     }
 
     #[test]

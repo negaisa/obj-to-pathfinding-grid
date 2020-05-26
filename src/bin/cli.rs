@@ -1,4 +1,5 @@
 use nalgebra::Vector3;
+use obj::Obj;
 use obj_to_pathfinding_grid;
 use obj_to_pathfinding_grid::Progress;
 use std::path::PathBuf;
@@ -44,31 +45,23 @@ fn main() {
         }
     };
 
-    let std_out_progress = StdOutProgress {};
+    let progress = StdOutProgress {};
 
-    obj_to_pathfinding_grid::convert(
-        input,
-        &output,
-        center,
-        scale,
-        width,
-        height,
-        std_out_progress,
-    );
+    println!("Starting to convert obj file");
+
+    let obj = Obj::load(input).expect("Failed to load input file");
+
+    obj_to_pathfinding_grid::convert(&obj, center, scale, width, height, progress)
+        .export(output)
+        .expect("Failed to save output file");
+
+    println!("Finished converting obj to grid");
 }
 
 struct StdOutProgress {}
 
 impl Progress for StdOutProgress {
-    fn starting(&self) {
-        println!("Starting!")
-    }
-
     fn update_progress(&self, percent: f32) {
         print!("Current progress: {:.2}%\r", percent)
-    }
-
-    fn finished(&self) {
-        println!("\nFinished!")
     }
 }
