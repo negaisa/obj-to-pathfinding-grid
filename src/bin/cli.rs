@@ -55,7 +55,7 @@ fn main() {
         .export(output)
         .expect("Failed to save output file");
 
-    println!("Finished converting obj to grid");
+    print!("\nFinished converting obj to grid");
 }
 
 struct StdOutProgress {}
