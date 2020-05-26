@@ -9,15 +9,40 @@ pub trait Progress {
     fn update_progress(&self, percent: f32);
 }
 
-pub fn convert<P: Progress>(
+pub trait Preprocessor {
+    fn pre_process(
+        &self,
+        triangle: Triangle,
+        width: u32,
+        height: u32,
+        center: Vector3<f32>,
+    ) -> Triangle;
+}
+
+pub struct NoOpPreprocessor {}
+
+impl Preprocessor for NoOpPreprocessor {
+    fn pre_process(
+        &self,
+        triangle: Triangle,
+        _width: u32,
+        _height: u32,
+        _center: Vector3<f32>,
+    ) -> Triangle {
+        triangle
+    }
+}
+
+pub fn convert<Prg: Progress, Pre: Preprocessor>(
     obj: &Obj,
     center: Vector3<f32>,
     scale: f32,
     width: u32,
     height: u32,
-    progress: P,
+    progress: Prg,
+    preprocessor: Pre,
 ) -> Grid {
-    let triangles: Vec<Triangle> = parse_triangles(obj)
+    let triangles: Vec<Triangle> = parse_triangles(&obj)
         .into_iter()
         .map(|t| t.scale(scale))
         .map(|t| t.move_to(&center))
@@ -28,7 +53,9 @@ pub fn convert<P: Progress>(
     let mut current = 0;
 
     for triangle in triangles {
-        obstacles.extend(find_obstacles(&triangle, width, height));
+        let processed_triangle = preprocessor.pre_process(triangle, width, height, center);
+
+        obstacles.extend(find_obstacles(&processed_triangle, width, height));
         current += 1;
 
         let percent = current as f32 * 100.0 / length as f32;

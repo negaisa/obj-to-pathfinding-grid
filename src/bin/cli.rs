@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use obj::Obj;
 use obj_to_pathfinding_grid;
-use obj_to_pathfinding_grid::Progress;
+use obj_to_pathfinding_grid::{NoOpPreprocessor, Progress};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -51,9 +51,17 @@ fn main() {
 
     let obj = Obj::load(input).expect("Failed to load input file");
 
-    obj_to_pathfinding_grid::convert(&obj, center, scale, width, height, progress)
-        .export(output)
-        .expect("Failed to save output file");
+    obj_to_pathfinding_grid::convert(
+        &obj,
+        center,
+        scale,
+        width,
+        height,
+        progress,
+        NoOpPreprocessor {},
+    )
+    .export(output)
+    .expect("Failed to save output file");
 
     print!("\nFinished converting obj to grid");
 }
