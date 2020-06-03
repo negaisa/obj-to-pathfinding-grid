@@ -16,7 +16,7 @@ pub trait Preprocessor {
         width: u32,
         height: u32,
         center: Vector3<f32>,
-    ) -> Triangle;
+    ) -> Option<Triangle>;
 }
 
 pub struct NoOpPreprocessor {}
@@ -28,8 +28,8 @@ impl Preprocessor for NoOpPreprocessor {
         _width: u32,
         _height: u32,
         _center: Vector3<f32>,
-    ) -> Triangle {
-        triangle
+    ) -> Option<Triangle> {
+        Some(triangle)
     }
 }
 
@@ -53,9 +53,12 @@ pub fn convert<Prg: Progress, Pre: Preprocessor>(
     let mut current = 0;
 
     for triangle in triangles {
-        let processed_triangle = preprocessor.pre_process(triangle, width, height, center);
+        let processed_triangle_opt = preprocessor.pre_process(triangle, width, height, center);
 
-        obstacles.extend(find_obstacles(&processed_triangle, width, height));
+        if let Some(processed_triangle) = processed_triangle_opt {
+            obstacles.extend(find_obstacles(&processed_triangle, width, height));
+        }
+
         current += 1;
 
         let percent = current as f32 * 100.0 / length as f32;

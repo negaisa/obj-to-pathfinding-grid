@@ -45,7 +45,7 @@ fn main() {
         }
     };
 
-    let progress = StdOutProgress {};
+    let progress = StdOutProgress::new();
 
     println!("Starting to convert obj file");
 
@@ -67,6 +67,12 @@ fn main() {
 }
 
 struct StdOutProgress {}
+
+impl StdOutProgress {
+    pub fn new() -> Self {
+        StdOutProgress {}
+    }
+}
 
 impl Progress for StdOutProgress {
     fn update_progress(&self, percent: f32) {
