@@ -105,13 +105,13 @@ fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u
     let max = bounding_box.max;
 
     let min_x = (min.x.floor() as u32).min(width);
-    let max_x = (max.x.ceil() as u32).max(width);
+    let max_x = (max.x.ceil() as u32).min(width);
 
     let min_y = (min.y.floor() as u32).min(width);
-    let max_y = (max.y.ceil() as u32).max(width);
+    let max_y = (max.y.ceil() as u32).min(width);
 
     let min_z = (min.z.floor() as u32).min(height);
-    let max_z = (max.z.ceil() as u32).max(height);
+    let max_z = (max.z.ceil() as u32).min(height);
 
     let mut obstacles = Vec::new();
 
