@@ -26,7 +26,7 @@ impl Triangle {
 }
 
 impl Triangle {
-    pub fn is_inside(&self, vector: &Vector3<u32>) -> bool {
+    pub fn is_inside(&self, vector: &Vector3<i32>) -> bool {
         let vector_float = Vector3::new(vector.x as f32, vector.y as f32, vector.z as f32);
         let box_half_size = Vector3::new(0.5, 0.5, 0.5);
         let box_center = vector_float + &box_half_size;
@@ -284,6 +284,7 @@ mod tests {
         assert!(triangle.is_inside(&Vector3::new(0, 0, 0)));
         assert!(triangle.is_inside(&Vector3::new(5, 5, 5)));
         assert!(!triangle.is_inside(&Vector3::new(10, 5, 0)));
+        assert!(!triangle.is_inside(&Vector3::new(-3, 6, -2)));
     }
 
     #[test]

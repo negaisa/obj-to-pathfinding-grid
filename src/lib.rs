@@ -104,14 +104,14 @@ fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u
     let min = bounding_box.min;
     let max = bounding_box.max;
 
-    let min_x = (min.x.floor() as u32).min(width);
-    let max_x = (max.x.ceil() as u32).min(width);
+    let min_x = (min.x.floor() as i32).min(width as i32);
+    let max_x = (max.x.ceil() as i32).min(width as i32);
 
-    let min_y = (min.y.floor() as u32).min(width);
-    let max_y = (max.y.ceil() as u32).min(width);
+    let min_y = (min.y.floor() as i32).min(width as i32);
+    let max_y = (max.y.ceil() as i32).min(width as i32);
 
-    let min_z = (min.z.floor() as u32).min(height);
-    let max_z = (max.z.ceil() as u32).min(height);
+    let min_z = (min.z.floor() as i32).min(height as i32);
+    let max_z = (max.z.ceil() as i32).min(height as i32);
 
     let mut obstacles = Vec::new();
 
@@ -121,7 +121,9 @@ fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u
                 let point = Vector3::new(x, y, z);
 
                 if triangle.is_inside(&point) {
-                    obstacles.push(point);
+                    let local_point = Vector3::new(x as u32, y as u32, z as u32);
+
+                    obstacles.push(local_point);
                 }
             }
         }
