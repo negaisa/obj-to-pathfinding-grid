@@ -45,7 +45,6 @@ pub fn convert<Prg: Progress, Pre: Preprocessor>(
     let triangles: Vec<Triangle> = parse_triangles(&obj)
         .into_iter()
         .map(|t| t.scale(scale))
-        .map(|t| t.move_to(&center))
         .collect();
 
     let mut obstacles = Vec::new();

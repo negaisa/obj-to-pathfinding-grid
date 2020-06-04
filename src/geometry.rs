@@ -145,14 +145,6 @@ impl Triangle {
         Triangle::new(a, b, c)
     }
 
-    pub fn move_to(self, vector: &Vector3<f32>) -> Triangle {
-        let a = self.a + vector;
-        let b = self.b + vector;
-        let c = self.c + vector;
-
-        Triangle::new(a, b, c)
-    }
-
     pub fn bounding_box(&self) -> BoundingBox {
         let min_x = self.a.x.min(self.b.x).min(self.c.x);
         let min_y = self.a.y.min(self.b.y).min(self.c.y);
@@ -303,24 +295,6 @@ mod tests {
         assert_eq!(scaled_triangle.a, scaled_a);
         assert_eq!(scaled_triangle.b, scaled_b);
         assert_eq!(scaled_triangle.c, scaled_c);
-    }
-
-    #[test]
-    fn test_move_to() {
-        let a = Vector3::new(0.0, 0.0, 0.0);
-        let b = Vector3::new(5.0, 5.0, 5.0);
-        let c = Vector3::new(-5.0, 5.0, -5.0);
-
-        let triangle = Triangle::new(a, b, c);
-        let moved_triangle = triangle.move_to(&Vector3::new(50.0, -50.0, 100.0));
-
-        let moved_a = Vector3::new(50.0, -50.0, 100.0);
-        let moved_b = Vector3::new(55.0, -45.0, 105.0);
-        let moved_c = Vector3::new(45.0, -45.0, 95.0);
-
-        assert_eq!(moved_triangle.a, moved_a);
-        assert_eq!(moved_triangle.b, moved_b);
-        assert_eq!(moved_triangle.c, moved_c);
     }
 
     #[test]
