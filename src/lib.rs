@@ -1,4 +1,4 @@
-use crate::geometry::Triangle;
+use crate::geometry::{LocalVector, Triangle};
 use flying_pathfinding::Grid;
 use nalgebra::Vector3;
 use obj::Obj;
@@ -55,7 +55,7 @@ pub fn convert<Prg: Progress, Pre: Preprocessor>(
         let processed_triangle_opt = preprocessor.pre_process(triangle, width, height, center);
 
         if let Some(processed_triangle) = processed_triangle_opt {
-            obstacles.extend(find_obstacles(&processed_triangle, width, height));
+            obstacles.extend(find_obstacles(&processed_triangle, &center, width, height));
         }
 
         current += 1;
@@ -97,32 +97,31 @@ fn parse_triangles(obj: &Obj) -> Vec<Triangle> {
         .collect()
 }
 
-fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u32>> {
+/// To find obstacles we check every point in triangle bounding box.
+fn find_obstacles(
+    triangle: &Triangle,
+    center: &Vector3<f32>,
+    width: u32,
+    height: u32,
+) -> Vec<LocalVector> {
     let bounding_box = triangle.bounding_box();
 
-    let min = bounding_box.min;
-    let max = bounding_box.max;
-
-    let min_x = (min.x.floor() as i32).min(width as i32);
-    let max_x = (max.x.ceil() as i32).min(width as i32);
-
-    let min_y = (min.y.floor() as i32).min(width as i32);
-    let max_y = (max.y.ceil() as i32).min(width as i32);
-
-    let min_z = (min.z.floor() as i32).min(height as i32);
-    let max_z = (max.z.ceil() as i32).min(height as i32);
+    // Convert bounding box to local coordinates.
+    let min = LocalVector::from_world_vector(&bounding_box.min, &center, width, height);
+    let max = LocalVector::from_world_vector(&bounding_box.max, &center, width, height);
 
     let mut obstacles = Vec::new();
 
-    for x in min_x..max_x {
-        for y in min_y..max_y {
-            for z in min_z..max_z {
-                let point = Vector3::new(x, y, z);
+    for x in min.x..max.x {
+        for y in min.y..max.y {
+            for z in min.z..max.z {
+                let local_vector = LocalVector::new(x, y, z);
 
-                if triangle.is_inside(&point) {
-                    let local_point = Vector3::new(x as u32, y as u32, z as u32);
+                // Triangle coordinates are global.
+                let global_vector = local_vector.to_world_vector(&center, width, height);
 
-                    obstacles.push(local_point);
+                if triangle.is_inside(&global_vector) {
+                    obstacles.push(local_vector);
                 }
             }
         }

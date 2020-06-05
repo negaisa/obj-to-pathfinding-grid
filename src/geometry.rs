@@ -2,10 +2,10 @@ use nalgebra::Vector3;
 
 /// Local vector represents grid coordinates from 0 to width/height.
 #[derive(Debug, Eq, PartialEq)]
-struct LocalVector {
-    x: u32,
-    y: u32,
-    z: u32,
+pub struct LocalVector {
+    pub x: u32,
+    pub y: u32,
+    pub z: u32,
 }
 
 impl LocalVector {
@@ -13,36 +13,43 @@ impl LocalVector {
         LocalVector { x, y, z }
     }
 
-    /// Converts world vector to local grid vector.
-    /// Returns `None` if vector out of bounds.
+    /// Converts world vector to grid local vector.
+    /// If world vector out of grid bounds will be set border coordinates.
     pub fn from_world_vector(
         vector: &Vector3<f32>,
         center: &Vector3<f32>,
         width: u32,
         height: u32,
-    ) -> Option<Self> {
+    ) -> Self {
         let diff = center - vector;
 
         let half_width = width / 2;
         let half_height = height / 2;
 
-        let ix = half_width as i32 - diff.x.round() as i32;
-        let iy = half_width as i32 - diff.y.round() as i32;
-        let iz = half_height as i32 - diff.z.round() as i32;
+        let mx = (half_width as i32 - diff.x.round() as i32).max(0) as u32;
+        let my = (half_width as i32 - diff.y.round() as i32).max(0) as u32;
+        let mz = (half_height as i32 - diff.z.round() as i32).max(0) as u32;
 
-        if ix < 0 || iy < 0 || iz < 0 {
-            return None;
-        }
+        let x = mx.min(width) as u32;
+        let y = my.min(width) as u32;
+        let z = mz.min(height) as u32;
 
-        let x = ix as u32;
-        let y = iy as u32;
-        let z = iz as u32;
+        LocalVector { x, y, z }
+    }
 
-        if x <= width || y <= width || z <= height {
-            Some(LocalVector { x, y, z })
-        } else {
-            None
-        }
+    pub fn to_world_vector(&self, center: &Vector3<f32>, width: u32, height: u32) -> Vector3<i32> {
+        let half_width = width / 2;
+        let half_height = height / 2;
+
+        let min_x = (center.x.round() as i32) - half_width as i32;
+        let min_y = (center.y.round() as i32) - half_width as i32;
+        let min_z = (center.z.round() as i32) - half_height as i32;
+
+        let x = min_x + self.x as i32;
+        let y = min_y + self.y as i32;
+        let z = min_z + self.z as i32;
+
+        Vector3::new(x, y, z)
     }
 }
 
@@ -361,24 +368,43 @@ mod tests {
 
     #[test]
     fn test_from_world_vector() {
-        let local1 = create_local_vector(&Vector3::new(0.0, 0.0, 0.0));
-        let local2 = create_local_vector(&Vector3::new(250.0, 250.0, 250.0));
-        let local3 = create_local_vector(&Vector3::new(-250.0, -250.0, -250.0));
-        let local4 = create_local_vector(&Vector3::new(150.0, 150.0, 150.0));
-        let local5 = create_local_vector(&Vector3::new(-150.0, -250.0, -150.0));
-        let local6 = create_local_vector(&Vector3::new(-251.0, -251.0, -251.0));
-        let local7 = create_local_vector(&Vector3::new(251.0, 251.0, 251.0));
+        let local1 = to_local_vector(&Vector3::new(0.0, 0.0, 0.0));
+        let local2 = to_local_vector(&Vector3::new(250.0, 250.0, 250.0));
+        let local3 = to_local_vector(&Vector3::new(-250.0, -250.0, -250.0));
+        let local4 = to_local_vector(&Vector3::new(150.0, 150.0, 150.0));
+        let local5 = to_local_vector(&Vector3::new(-150.0, -250.0, -150.0));
+        let local6 = to_local_vector(&Vector3::new(-251.0, -251.0, -251.0));
+        let local7 = to_local_vector(&Vector3::new(251.0, 251.0, 251.0));
 
-        assert_eq!(local1, Some(LocalVector::new(250, 250, 250)));
-        assert_eq!(local2, Some(LocalVector::new(500, 500, 500)));
-        assert_eq!(local3, Some(LocalVector::new(0, 0, 0)));
-        assert_eq!(local4, Some(LocalVector::new(400, 400, 400)));
-        assert_eq!(local5, Some(LocalVector::new(100, 0, 100)));
-        assert_eq!(local6, None);
-        assert_eq!(local7, None);
+        assert_eq!(local1, LocalVector::new(250, 250, 250));
+        assert_eq!(local2, LocalVector::new(500, 500, 500));
+        assert_eq!(local3, LocalVector::new(0, 0, 0));
+        assert_eq!(local4, LocalVector::new(400, 400, 400));
+        assert_eq!(local5, LocalVector::new(100, 0, 100));
+        assert_eq!(local6, LocalVector::new(0, 0, 0));
+        assert_eq!(local7, LocalVector::new(500, 500, 500));
     }
 
-    fn create_local_vector(vector: &Vector3<f32>) -> Option<LocalVector> {
+    fn to_local_vector(vector: &Vector3<f32>) -> LocalVector {
         LocalVector::from_world_vector(vector, &Vector3::new(0.0, 0.0, 0.0), 500, 500)
+    }
+
+    #[test]
+    fn test_to_world_vector() {
+        let local1 = from_local_vector(&LocalVector::new(250, 250, 250));
+        let local2 = from_local_vector(&LocalVector::new(500, 500, 500));
+        let local3 = from_local_vector(&LocalVector::new(0, 0, 0));
+        let local4 = from_local_vector(&LocalVector::new(400, 400, 400));
+        let local5 = from_local_vector(&LocalVector::new(100, 0, 100));
+
+        assert_eq!(local1, Vector3::new(0, 0, 0));
+        assert_eq!(local2, Vector3::new(250, 250, 250));
+        assert_eq!(local3, Vector3::new(-250, -250, -250));
+        assert_eq!(local4, Vector3::new(150, 150, 150));
+        assert_eq!(local5, Vector3::new(-150, -250, -150));
+    }
+
+    fn from_local_vector(vector: &LocalVector) -> Vector3<i32> {
+        vector.to_world_vector(&Vector3::new(0.0, 0.0, 0.0), 500, 500)
     }
 }
