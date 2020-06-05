@@ -1,5 +1,51 @@
 use nalgebra::Vector3;
 
+/// Local vector represents grid coordinates from 0 to width/height.
+#[derive(Debug, Eq, PartialEq)]
+struct LocalVector {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+impl LocalVector {
+    pub fn new(x: u32, y: u32, z: u32) -> Self {
+        LocalVector { x, y, z }
+    }
+
+    /// Converts world vector to local grid vector.
+    /// Returns `None` if vector out of bounds.
+    pub fn from_world_vector(
+        vector: &Vector3<f32>,
+        center: &Vector3<f32>,
+        width: u32,
+        height: u32,
+    ) -> Option<Self> {
+        let diff = center - vector;
+
+        let half_width = width / 2;
+        let half_height = height / 2;
+
+        let ix = half_width as i32 - diff.x.round() as i32;
+        let iy = half_width as i32 - diff.y.round() as i32;
+        let iz = half_height as i32 - diff.z.round() as i32;
+
+        if ix < 0 || iy < 0 || iz < 0 {
+            return None;
+        }
+
+        let x = ix as u32;
+        let y = iy as u32;
+        let z = iz as u32;
+
+        if x <= width || y <= width || z <= height {
+            Some(LocalVector { x, y, z })
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct BoundingBox {
     pub min: Vector3<f32>,
@@ -262,7 +308,7 @@ fn axis_test(
 
 #[cfg(test)]
 mod tests {
-    use crate::geometry::Triangle;
+    use crate::geometry::{LocalVector, Triangle};
     use nalgebra::Vector3;
 
     #[test]
@@ -311,5 +357,28 @@ mod tests {
 
         assert_eq!(bounding_box.min, min);
         assert_eq!(bounding_box.max, max);
+    }
+
+    #[test]
+    fn test_from_world_vector() {
+        let local1 = create_local_vector(&Vector3::new(0.0, 0.0, 0.0));
+        let local2 = create_local_vector(&Vector3::new(250.0, 250.0, 250.0));
+        let local3 = create_local_vector(&Vector3::new(-250.0, -250.0, -250.0));
+        let local4 = create_local_vector(&Vector3::new(150.0, 150.0, 150.0));
+        let local5 = create_local_vector(&Vector3::new(-150.0, -250.0, -150.0));
+        let local6 = create_local_vector(&Vector3::new(-251.0, -251.0, -251.0));
+        let local7 = create_local_vector(&Vector3::new(251.0, 251.0, 251.0));
+
+        assert_eq!(local1, Some(LocalVector::new(250, 250, 250)));
+        assert_eq!(local2, Some(LocalVector::new(500, 500, 500)));
+        assert_eq!(local3, Some(LocalVector::new(0, 0, 0)));
+        assert_eq!(local4, Some(LocalVector::new(400, 400, 400)));
+        assert_eq!(local5, Some(LocalVector::new(100, 0, 100)));
+        assert_eq!(local6, None);
+        assert_eq!(local7, None);
+    }
+
+    fn create_local_vector(vector: &Vector3<f32>) -> Option<LocalVector> {
+        LocalVector::from_world_vector(vector, &Vector3::new(0.0, 0.0, 0.0), 500, 500)
     }
 }
