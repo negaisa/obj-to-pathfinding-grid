@@ -368,6 +368,10 @@ mod tests {
 
     #[test]
     fn test_from_world_vector() {
+        fn to_local_vector(vector: &Vector3<f32>) -> LocalVector {
+            LocalVector::from_world_vector(vector, &Vector3::new(0.0, 0.0, 0.0), 500, 500)
+        }
+
         let local1 = to_local_vector(&Vector3::new(0.0, 0.0, 0.0));
         let local2 = to_local_vector(&Vector3::new(250.0, 250.0, 250.0));
         let local3 = to_local_vector(&Vector3::new(-250.0, -250.0, -250.0));
@@ -385,12 +389,30 @@ mod tests {
         assert_eq!(local7, LocalVector::new(500, 500, 500));
     }
 
-    fn to_local_vector(vector: &Vector3<f32>) -> LocalVector {
-        LocalVector::from_world_vector(vector, &Vector3::new(0.0, 0.0, 0.0), 500, 500)
+    #[test]
+    fn test_from_world_vector2() {
+        fn to_local_vector(vector: &Vector3<f32>) -> LocalVector {
+            LocalVector::from_world_vector(
+                vector,
+                &Vector3::new(366.666656, -13866.666016, 84.290909),
+                500,
+                500,
+            )
+        }
+
+        let local1 = to_local_vector(&Vector3::new(366.666656, -13866.666016, 84.290909));
+        let local2 = to_local_vector(&Vector3::new(404.166656, -14024.999023, 22.343037));
+
+        assert_eq!(local1, LocalVector::new(250, 250, 250));
+        assert_eq!(local2, LocalVector::new(288, 92, 188));
     }
 
     #[test]
     fn test_to_world_vector() {
+        fn from_local_vector(vector: &LocalVector) -> Vector3<i32> {
+            vector.to_world_vector(&Vector3::new(0.0, 0.0, 0.0), 500, 500)
+        }
+
         let local1 = from_local_vector(&LocalVector::new(250, 250, 250));
         let local2 = from_local_vector(&LocalVector::new(500, 500, 500));
         let local3 = from_local_vector(&LocalVector::new(0, 0, 0));
@@ -404,7 +426,20 @@ mod tests {
         assert_eq!(local5, Vector3::new(-150, -250, -150));
     }
 
-    fn from_local_vector(vector: &LocalVector) -> Vector3<i32> {
-        vector.to_world_vector(&Vector3::new(0.0, 0.0, 0.0), 500, 500)
+    #[test]
+    fn test_to_world_vector2() {
+        fn from_local_vector(vector: &LocalVector) -> Vector3<i32> {
+            vector.to_world_vector(
+                &Vector3::new(366.666656, -13866.666016, 84.290909),
+                500,
+                500,
+            )
+        }
+
+        let local1 = from_local_vector(&LocalVector::new(250, 250, 250));
+        let local2 = from_local_vector(&LocalVector::new(288, 92, 188));
+
+        assert_eq!(local1, Vector3::new(367, -13867, 84));
+        assert_eq!(local2, Vector3::new(405, -14025, 22));
     }
 }
