@@ -2,8 +2,11 @@ use nalgebra::Vector3;
 use obj::Obj;
 use obj_to_pathfinding_grid;
 use obj_to_pathfinding_grid::{NoOpPreprocessor, Progress};
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+
+const DEFAULT_OUTPUT_FOLDER: &str = "grid";
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "obj-to-pathfinding-grid")]
@@ -39,9 +42,15 @@ fn main() {
         Some(v) => v.clone(),
         None => {
             let input_name_without_extension = input.file_stem().unwrap().to_str().unwrap();
-            let output_name = format!("{}.{}", input_name_without_extension, "dat");
 
-            PathBuf::from(output_name)
+            let output_folder = Path::new(DEFAULT_OUTPUT_FOLDER);
+
+            if !output_folder.exists() {
+                fs::create_dir(output_folder).expect("Failed to create output folder");
+            }
+
+            let output_name = format!("{}.{}", input_name_without_extension, "dat");
+            output_folder.join(PathBuf::from(output_name))
         }
     };
 
