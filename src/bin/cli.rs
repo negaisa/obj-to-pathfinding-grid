@@ -1,7 +1,9 @@
 use nalgebra::Vector3;
 use obj::Obj;
 use obj_to_pathfinding_grid;
-use obj_to_pathfinding_grid::{NoOpPreprocessor, Progress};
+use obj_to_pathfinding_grid::geometry::Triangle;
+use obj_to_pathfinding_grid::parse_triangles;
+use obj_to_pathfinding_grid::{bounding_box, NoOpPreprocessor, Progress};
 use std::fs;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
@@ -16,27 +18,43 @@ struct Opt {
     #[structopt(short, long, parse(from_os_str))]
     output: Option<PathBuf>,
     #[structopt(short, long)]
-    width: u32,
+    width: Option<u32>,
     #[structopt(short, long)]
-    height: u32,
-    #[structopt(short, long, default_value = "1.0")]
-    scale: f32,
-    #[structopt(short = "x", long, default_value = "0.0")]
-    center_x: f32,
-    #[structopt(short = "y", long, default_value = "0.0")]
-    center_y: f32,
-    #[structopt(short = "z", long, default_value = "0.0")]
-    center_z: f32,
+    height: Option<u32>,
+    #[structopt(short, long)]
+    scale: Option<f32>,
+    #[structopt(short = "x", long)]
+    center_x: Option<f32>,
+    #[structopt(short = "y", long)]
+    center_y: Option<f32>,
+    #[structopt(short = "z", long)]
+    center_z: Option<f32>,
 }
 
 fn main() {
     let opt: Opt = Opt::from_args();
 
     let input = &opt.input;
-    let center = Vector3::new(opt.center_x, opt.center_y, opt.center_z);
-    let scale = opt.scale;
-    let width = opt.width;
-    let height = opt.height;
+
+    let obj = Obj::load(input).expect("Failed to load input file");
+    let scale = opt.scale.unwrap_or(1.0);
+
+    let triangles: Vec<Triangle> = parse_triangles(&obj)
+        .into_iter()
+        .map(|t| t.scale(scale))
+        .collect();
+
+    let bounding_box = bounding_box(&triangles);
+    let bounding_box_center = bounding_box.center();
+
+    let center_x = opt.center_x.unwrap_or(bounding_box_center.x);
+    let center_y = opt.center_x.unwrap_or(bounding_box_center.y);
+    let center_z = opt.center_x.unwrap_or(bounding_box_center.z);
+
+    let center = Vector3::new(center_x, center_y, center_z);
+
+    let width = opt.width.unwrap_or(bounding_box.width() as u32);
+    let height = opt.height.unwrap_or(bounding_box.height() as u32);
 
     let output = match &opt.output {
         Some(v) => v.clone(),
@@ -58,12 +76,9 @@ fn main() {
 
     println!("Starting to convert obj file");
 
-    let obj = Obj::load(input).expect("Failed to load input file");
-
     obj_to_pathfinding_grid::convert(
-        &obj,
+        triangles,
         center,
-        scale,
         width,
         height,
         progress,

@@ -63,6 +63,21 @@ impl BoundingBox {
     pub fn new(min: Vector3<f32>, max: Vector3<f32>) -> Self {
         BoundingBox { min, max }
     }
+
+    pub fn center(&self) -> Vector3<f32> {
+        (self.min + self.max) / 2.0
+    }
+
+    pub fn width(&self) -> f32 {
+        let width_x = self.max.x - self.min.x;
+        let width_y = self.max.y - self.min.y;
+
+        width_x.max(width_y)
+    }
+
+    pub fn height(&self) -> f32 {
+        self.max.z - self.min.z
+    }
 }
 
 #[derive(Debug)]
@@ -314,7 +329,7 @@ fn axis_test(
 
 #[cfg(test)]
 mod tests {
-    use crate::geometry::{LocalVector, Triangle};
+    use crate::geometry::{BoundingBox, LocalVector, Triangle};
     use nalgebra::Vector3;
 
     #[test]
@@ -458,5 +473,48 @@ mod tests {
 
         assert_eq!(local1, Vector3::new(367, -13867, 84));
         assert_eq!(local2, Vector3::new(405, -14025, 22));
+    }
+
+    #[test]
+    fn test_to_world_vector3() {
+        fn from_local_vector(vector: &LocalVector) -> Vector3<i32> {
+            vector.to_world_vector(&Vector3::new(200.0, 200.0, 75.0), 400, 150)
+        }
+
+        let local1 = from_local_vector(&LocalVector::new(0, 0, 0));
+        let local2 = from_local_vector(&LocalVector::new(400, 400, 150));
+
+        assert_eq!(local1, Vector3::new(0, 0, 0));
+        assert_eq!(local2, Vector3::new(400, 400, 150));
+    }
+
+    #[test]
+    fn test_bounding_box_center() {
+        let min = Vector3::new(-200.0, -200.0, -200.0);
+        let max = Vector3::new(200.0, 200.0, 200.0);
+
+        let bounding_box = BoundingBox::new(min, max);
+
+        assert_eq!(bounding_box.center(), Vector3::new(0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_bounding_box_width() {
+        let min = Vector3::new(-100.0, -200.0, -200.0);
+        let max = Vector3::new(100.0, 200.0, 200.0);
+
+        let bounding_box = BoundingBox::new(min, max);
+
+        assert_eq!(bounding_box.width(), 400.0);
+    }
+
+    #[test]
+    fn test_bounding_box_height() {
+        let min = Vector3::new(-100.0, -200.0, -200.0);
+        let max = Vector3::new(100.0, 200.0, 200.0);
+
+        let bounding_box = BoundingBox::new(min, max);
+
+        assert_eq!(bounding_box.height(), 400.0);
     }
 }
