@@ -48,8 +48,8 @@ fn main() {
     let bounding_box_center = bounding_box.center();
 
     let center_x = opt.center_x.unwrap_or(bounding_box_center.x);
-    let center_y = opt.center_x.unwrap_or(bounding_box_center.y);
-    let center_z = opt.center_x.unwrap_or(bounding_box_center.z);
+    let center_y = opt.center_y.unwrap_or(bounding_box_center.y);
+    let center_z = opt.center_z.unwrap_or(bounding_box_center.z);
 
     let center = Vector3::new(center_x, center_y, center_z);
 
