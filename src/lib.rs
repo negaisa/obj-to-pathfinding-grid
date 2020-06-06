@@ -129,3 +129,55 @@ fn find_obstacles(
 
     obstacles
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::find_obstacles;
+    use crate::geometry::{LocalVector, Triangle};
+    use nalgebra::Vector3;
+
+    #[test]
+    fn test_find_obstacles() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 0.0);
+        let c = Vector3::new(-5.0, -5.0, 0.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let center = Vector3::new(0.0, 0.0, 0.0);
+
+        let obstacles = find_obstacles(&triangle, &center, 10, 10);
+
+        let expected_obstacles = vec![
+            LocalVector::new(0, 0, 5),
+            LocalVector::new(0, 1, 5),
+            LocalVector::new(1, 0, 5),
+            LocalVector::new(1, 1, 5),
+            LocalVector::new(1, 2, 5),
+            LocalVector::new(2, 1, 5),
+            LocalVector::new(2, 2, 5),
+            LocalVector::new(2, 3, 5),
+            LocalVector::new(3, 2, 5),
+            LocalVector::new(3, 3, 5),
+            LocalVector::new(3, 4, 5),
+            LocalVector::new(4, 3, 5),
+            LocalVector::new(4, 4, 5),
+            LocalVector::new(4, 5, 5),
+            LocalVector::new(5, 4, 5),
+            LocalVector::new(5, 5, 5),
+            LocalVector::new(5, 6, 5),
+            LocalVector::new(6, 5, 5),
+            LocalVector::new(6, 6, 5),
+            LocalVector::new(6, 7, 5),
+            LocalVector::new(7, 6, 5),
+            LocalVector::new(7, 7, 5),
+            LocalVector::new(7, 8, 5),
+            LocalVector::new(8, 7, 5),
+            LocalVector::new(8, 8, 5),
+            LocalVector::new(8, 9, 5),
+            LocalVector::new(9, 8, 5),
+            LocalVector::new(9, 9, 5),
+        ];
+
+        assert_eq!(expected_obstacles, obstacles)
+    }
+}

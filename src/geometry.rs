@@ -80,9 +80,8 @@ impl Triangle {
 
 impl Triangle {
     pub fn is_inside(&self, vector: &Vector3<i32>) -> bool {
-        let vector_float = Vector3::new(vector.x as f32, vector.y as f32, vector.z as f32);
+        let box_center = Vector3::new(vector.x as f32, vector.y as f32, vector.z as f32);
         let box_half_size = Vector3::new(0.5, 0.5, 0.5);
-        let box_center = vector_float + &box_half_size;
 
         // Move the triangle so that the box is centered around the origin.
         let v0 = self.a - &box_center;
@@ -142,7 +141,7 @@ impl Triangle {
             return false;
         }
 
-        if normal.dot(&v_max) < 0.0 {
+        if normal.dot(&v_max) + d < 0.0 {
             return false;
         }
 
@@ -328,6 +327,8 @@ mod tests {
 
         assert!(triangle.is_inside(&Vector3::new(0, 0, 0)));
         assert!(triangle.is_inside(&Vector3::new(5, 5, 5)));
+        assert!(!triangle.is_inside(&Vector3::new(-1, -1, -1)));
+        assert!(!triangle.is_inside(&Vector3::new(6, 6, 6)));
         assert!(!triangle.is_inside(&Vector3::new(10, 5, 0)));
         assert!(!triangle.is_inside(&Vector3::new(-3, 6, -2)));
     }
@@ -359,8 +360,24 @@ mod tests {
         let triangle = Triangle::new(a, b, c);
         let bounding_box = triangle.bounding_box();
 
-        let min = Vector3::new(-5.0, 0.0, -5.0);
-        let max = Vector3::new(5.0, 5.0, 5.0);
+        let min = Vector3::new(-6.0, -1.0, -6.0);
+        let max = Vector3::new(6.0, 6.0, 6.0);
+
+        assert_eq!(bounding_box.min, min);
+        assert_eq!(bounding_box.max, max);
+    }
+
+    #[test]
+    fn test_bounding_box2() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 0.0);
+        let c = Vector3::new(-5.0, -5.0, 0.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let bounding_box = triangle.bounding_box();
+
+        let min = Vector3::new(-6.0, -6.0, -1.0);
+        let max = Vector3::new(6.0, 6.0, 1.0);
 
         assert_eq!(bounding_box.min, min);
         assert_eq!(bounding_box.max, max);
