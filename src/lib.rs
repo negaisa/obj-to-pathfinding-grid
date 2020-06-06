@@ -1,4 +1,4 @@
-use crate::geometry::Triangle;
+use crate::geometry::{BoundingBox, LocalVector, Triangle};
 use flying_pathfinding::Grid;
 use nalgebra::Vector3;
 use obj::Obj;
@@ -34,20 +34,13 @@ impl Preprocessor for NoOpPreprocessor {
 }
 
 pub fn convert<Prg: Progress, Pre: Preprocessor>(
-    obj: &Obj,
+    triangles: Vec<Triangle>,
     center: Vector3<f32>,
-    scale: f32,
     width: u32,
     height: u32,
     progress: Prg,
     preprocessor: Pre,
 ) -> Grid {
-    let triangles: Vec<Triangle> = parse_triangles(&obj)
-        .into_iter()
-        .map(|t| t.scale(scale))
-        .map(|t| t.move_to(&center))
-        .collect();
-
     let mut obstacles = Vec::new();
     let length = triangles.len();
     let mut current = 0;
@@ -56,7 +49,7 @@ pub fn convert<Prg: Progress, Pre: Preprocessor>(
         let processed_triangle_opt = preprocessor.pre_process(triangle, width, height, center);
 
         if let Some(processed_triangle) = processed_triangle_opt {
-            obstacles.extend(find_obstacles(&processed_triangle, width, height));
+            obstacles.extend(find_obstacles(&processed_triangle, &center, width, height));
         }
 
         current += 1;
@@ -74,7 +67,7 @@ pub fn convert<Prg: Progress, Pre: Preprocessor>(
     grid
 }
 
-fn parse_triangles(obj: &Obj) -> Vec<Triangle> {
+pub fn parse_triangles(obj: &Obj) -> Vec<Triangle> {
     let data = &obj.data;
     let positions = &data.position;
 
@@ -98,34 +91,154 @@ fn parse_triangles(obj: &Obj) -> Vec<Triangle> {
         .collect()
 }
 
-fn find_obstacles(triangle: &Triangle, width: u32, height: u32) -> Vec<Vector3<u32>> {
+/// To find obstacles we check every point in triangle bounding box.
+fn find_obstacles(
+    triangle: &Triangle,
+    center: &Vector3<f32>,
+    width: u32,
+    height: u32,
+) -> Vec<LocalVector> {
     let bounding_box = triangle.bounding_box();
 
-    let min = bounding_box.min;
-    let max = bounding_box.max;
-
-    let min_x = (min.x.floor() as u32).min(width);
-    let max_x = (max.x.ceil() as u32).min(width);
-
-    let min_y = (min.y.floor() as u32).min(width);
-    let max_y = (max.y.ceil() as u32).min(width);
-
-    let min_z = (min.z.floor() as u32).min(height);
-    let max_z = (max.z.ceil() as u32).min(height);
+    // Convert bounding box to local coordinates.
+    let min = LocalVector::from_world_vector(&bounding_box.min, &center, width, height);
+    let max = LocalVector::from_world_vector(&bounding_box.max, &center, width, height);
 
     let mut obstacles = Vec::new();
 
-    for x in min_x..max_x {
-        for y in min_y..max_y {
-            for z in min_z..max_z {
-                let point = Vector3::new(x, y, z);
+    for x in min.x..max.x {
+        for y in min.y..max.y {
+            for z in min.z..max.z {
+                let local_vector = LocalVector::new(x, y, z);
 
-                if triangle.is_inside(&point) {
-                    obstacles.push(point);
+                // Triangle coordinates are global.
+                let global_vector = local_vector.to_world_vector(&center, width, height);
+
+                if triangle.is_inside(&global_vector) {
+                    obstacles.push(local_vector);
                 }
             }
         }
     }
 
     obstacles
+}
+
+pub fn bounding_box(triangles: &Vec<Triangle>) -> BoundingBox {
+    let bounding_boxes: Vec<BoundingBox> = triangles.iter().map(|t| t.bounding_box()).collect();
+
+    let min_x = bounding_boxes
+        .iter()
+        .map(|b| b.min)
+        .map(|m| m.x.round() as i32)
+        .min()
+        .unwrap_or(0) as f32;
+
+    let min_y = bounding_boxes
+        .iter()
+        .map(|b| b.min)
+        .map(|m| m.y.round() as i32)
+        .min()
+        .unwrap_or(0) as f32;
+
+    let min_z = bounding_boxes
+        .iter()
+        .map(|b| b.min)
+        .map(|m| m.z.round() as i32)
+        .min()
+        .unwrap_or(0) as f32;
+
+    let max_x = bounding_boxes
+        .iter()
+        .map(|b| b.max)
+        .map(|m| m.x.round() as i32)
+        .max()
+        .unwrap_or(0) as f32;
+
+    let max_y = bounding_boxes
+        .iter()
+        .map(|b| b.max)
+        .map(|m| m.y.round() as i32)
+        .max()
+        .unwrap_or(0) as f32;
+
+    let max_z = bounding_boxes
+        .iter()
+        .map(|b| b.max)
+        .map(|m| m.z.round() as i32)
+        .max()
+        .unwrap_or(0) as f32;
+
+    let min = Vector3::new(min_x, min_y, min_z);
+    let max = Vector3::new(max_x, max_y, max_z);
+
+    BoundingBox { min, max }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::geometry::{LocalVector, Triangle};
+    use crate::{bounding_box, find_obstacles};
+    use nalgebra::Vector3;
+
+    #[test]
+    fn test_find_obstacles() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 0.0);
+        let c = Vector3::new(-5.0, -5.0, 0.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let center = Vector3::new(0.0, 0.0, 0.0);
+
+        let obstacles = find_obstacles(&triangle, &center, 10, 10);
+
+        let expected_obstacles = vec![
+            LocalVector::new(0, 0, 5),
+            LocalVector::new(0, 1, 5),
+            LocalVector::new(1, 0, 5),
+            LocalVector::new(1, 1, 5),
+            LocalVector::new(1, 2, 5),
+            LocalVector::new(2, 1, 5),
+            LocalVector::new(2, 2, 5),
+            LocalVector::new(2, 3, 5),
+            LocalVector::new(3, 2, 5),
+            LocalVector::new(3, 3, 5),
+            LocalVector::new(3, 4, 5),
+            LocalVector::new(4, 3, 5),
+            LocalVector::new(4, 4, 5),
+            LocalVector::new(4, 5, 5),
+            LocalVector::new(5, 4, 5),
+            LocalVector::new(5, 5, 5),
+            LocalVector::new(5, 6, 5),
+            LocalVector::new(6, 5, 5),
+            LocalVector::new(6, 6, 5),
+            LocalVector::new(6, 7, 5),
+            LocalVector::new(7, 6, 5),
+            LocalVector::new(7, 7, 5),
+            LocalVector::new(7, 8, 5),
+            LocalVector::new(8, 7, 5),
+            LocalVector::new(8, 8, 5),
+            LocalVector::new(8, 9, 5),
+            LocalVector::new(9, 8, 5),
+            LocalVector::new(9, 9, 5),
+        ];
+
+        assert_eq!(expected_obstacles, obstacles)
+    }
+
+    #[test]
+    fn test_bounding_box() {
+        let a = Vector3::new(0.0, 0.0, 0.0);
+        let b = Vector3::new(5.0, 5.0, 0.0);
+        let c = Vector3::new(-5.0, -5.0, 0.0);
+
+        let triangle = Triangle::new(a, b, c);
+        let bounding_box = bounding_box(&vec![triangle]);
+
+        let min = Vector3::new(-6.0, -6.0, -1.0);
+        let max = Vector3::new(6.0, 6.0, 1.0);
+
+        assert_eq!(bounding_box.min, min);
+        assert_eq!(bounding_box.max, max);
+    }
 }
