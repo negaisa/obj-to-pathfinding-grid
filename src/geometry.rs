@@ -199,13 +199,13 @@ impl Triangle {
     }
 
     pub fn bounding_box(&self) -> BoundingBox {
-        let min_x = self.a.x.min(self.b.x).min(self.c.x);
-        let min_y = self.a.y.min(self.b.y).min(self.c.y);
-        let min_z = self.a.z.min(self.b.z).min(self.c.z);
+        let min_x = self.a.x.min(self.b.x).min(self.c.x) - 1.0;
+        let min_y = self.a.y.min(self.b.y).min(self.c.y) - 1.0;
+        let min_z = self.a.z.min(self.b.z).min(self.c.z) - 1.0;
 
-        let max_x = self.a.x.max(self.b.x).max(self.c.x);
-        let max_y = self.a.y.max(self.b.y).max(self.c.y);
-        let max_z = self.a.z.max(self.b.z).max(self.c.z);
+        let max_x = self.a.x.max(self.b.x).max(self.c.x) + 1.0;
+        let max_y = self.a.y.max(self.b.y).max(self.c.y) + 1.0;
+        let max_z = self.a.z.max(self.b.z).max(self.c.z) + 1.0;
 
         let min = Vector3::new(min_x, min_y, min_z);
         let max = Vector3::new(max_x, max_y, max_z);
